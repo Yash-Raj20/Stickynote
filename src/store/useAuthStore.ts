@@ -32,14 +32,18 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: getStoredUser(),
   token: typeof window !== 'undefined' ? Cookies.get('token') || null : null,
   isAuthenticated: typeof window !== 'undefined' ? !!Cookies.get('token') : false,
-  login: (user, token) => {
+  login: (userData, token) => {
+    // Strip token from user object to prevent storing it in localStorage
+    const { token: _, ...user } = userData;
+    
     Cookies.set('token', token, { expires: 7 });
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(user));
     }
     set({ user, token, isAuthenticated: true });
   },
-  updateUser: (user) => {
+  updateUser: (userData) => {
+    const { token: _, ...user } = userData;
     if (typeof window !== 'undefined') {
       localStorage.setItem('user', JSON.stringify(user));
     }

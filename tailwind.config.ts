@@ -20,6 +20,15 @@ const config: Config = {
         "theme-accent": "var(--theme-accent)",
         "input-bg": "var(--input-bg)",
       },
+      keyframes: {
+        gradient: {
+          '0%': { backgroundPosition: '0% 50%' },
+          '100%': { backgroundPosition: '200% 50%' },
+        },
+      },
+      animation: {
+        'gradient': 'gradient 4s linear infinite',
+      },
     },
   },
   plugins: [],

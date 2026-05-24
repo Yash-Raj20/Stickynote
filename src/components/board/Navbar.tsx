@@ -5,8 +5,10 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Search, HelpCircle, Settings, Plus, Menu, User, LogOut } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import AIMenu from './AIMenu';
 
 export default function Navbar() {
   const addNote = useNotesStore(state => state.addNote);
@@ -15,11 +17,11 @@ export default function Navbar() {
   const setIsSearchOpen = useNotesStore(state => state.setIsSearchOpen);
   const setIsProfileModalOpen = useNotesStore(state => state.setIsProfileModalOpen);
   const setIsSettingsModalOpen = useNotesStore(state => state.setIsSettingsModalOpen);
-  
+
   const currentUser = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
   const router = useRouter();
-  
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -50,10 +52,17 @@ export default function Navbar() {
           <Menu size={24} />
         </button>
 
-        {/* Brand Name + Logo */}
-        <div className="flex items-center gap-2">
-          <p className="bg-theme-secondary text-theme-primary rounded-xl w-8 h-8 flex items-center justify-center font-black text-sm sm:text-base shrink-0 shadow-sm">SN</p>
-          <span className="text-lg sm:text-xl font-black text-theme-primary tracking-tight hidden sm:block">StickyNotes</span>
+        {/* Brand Logo */}
+        <div className="flex items-center gap-1">
+          <Image
+            src="/logo-new.png"
+            alt="Sticky Notes Logo"
+            width={40}
+            height={40}
+            className="h-15 w-15 object-cover shrink-0"
+            priority
+          />
+          <span className="hidden sm:block text-lg sm:text-xl font-black text-theme-primary tracking-tight">StickyNotes</span>
         </div>
       </div>
 
@@ -62,9 +71,9 @@ export default function Navbar() {
 
       {/* Right: Tools & Search */}
       <div className="flex items-center justify-end gap-1 sm:gap-3 shrink-0">
-        
+
         {/* Mobile Search Icon (< lg) */}
-        <button 
+        <button
           onClick={() => setIsSearchOpen(true)}
           className="w-9 h-9 p-2 rounded-full bg-surface border border-border flex items-center justify-center text-foreground/60 hover:bg-input-bg transition-colors lg:hidden"
         >
@@ -72,7 +81,7 @@ export default function Navbar() {
         </button>
 
         {/* Desktop Search Bar (>= lg) */}
-        <button 
+        <button
           onClick={() => setIsSearchOpen(true)}
           className="hidden lg:flex items-center w-64 h-11 px-4 rounded-full bg-input-bg hover:bg-input-bg/80 border border-transparent hover:border-border text-foreground/40 transition-all text-sm group mr-2"
         >
@@ -83,11 +92,12 @@ export default function Navbar() {
           </div>
         </button>
 
+        <AIMenu />
         <ThemeToggle />
 
         {/* User Avatar & Dropdown */}
         <div className="relative" ref={profileRef}>
-          <button 
+          <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden border-2 border-white shadow-sm shrink-0 cursor-pointer ring-1 ring-black/5 block flex items-center justify-center text-slate-500 dark:text-slate-300 font-bold"
           >
@@ -99,7 +109,7 @@ export default function Navbar() {
               <span>{currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'U'}</span>
             )}
           </button>
-          
+
           {isProfileOpen && (
             <div className="absolute top-full right-0 mt-2 w-56 bg-surface rounded-xl shadow-xl border border-border py-2 flex flex-col z-50 animate-in fade-in zoom-in-95 duration-100">
               <div className="px-4 py-2 border-b border-border mb-1">

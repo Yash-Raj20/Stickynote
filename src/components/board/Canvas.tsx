@@ -216,7 +216,7 @@ export default function Canvas() {
       </div>
 
       {/* Export buttons */}
-      <div data-html2canvas-ignore="true" className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border rounded-full px-3 py-1.5 shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-300">
+      <div data-html2canvas-ignore="true" className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border rounded-full px-3 py-1.5 shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-300">
         <button onClick={handleExportPng} className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-input-bg transition-colors text-foreground/70">
           <FileImage size={14} /> PNG
         </button>

@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 import api from '@/lib/api';
 
+let fetchCounter = 0;
+
 interface Position { x: number; y: number }
 interface Size { width: number; height: number }
 
 export interface Attachment { url: string; type: string; name: string; x?: number; y?: number; width?: number; height?: number; }
 export interface Connection { targetId: string; }
+export interface Comment { id: string; userId: string; userName: string; userAvatar?: string; text: string; createdAt: string; }
 
 export interface Note {
   _id: string;
@@ -25,6 +28,7 @@ export interface Note {
   userId?: { _id: string; name: string; email: string };
   connections?: Connection[];
   attachments?: Attachment[];
+  comments?: Comment[];
   lastEditedBy?: string | null;
   reactions?: Record<string, string[]>;
   createdAt?: string;
@@ -47,7 +51,10 @@ interface NotesState {
   addNote: (note: Partial<Note>) => Promise<void>;
   updateNote: (id: string, updates: Partial<Note>) => Promise<void>;
   setLocalNotePosition: (id: string, position: { x: number; y: number }) => void;
+  setLocalNotePositions: (updates: { id: string; position: { x: number; y: number } }[]) => void;
   deleteNote: (id: string) => Promise<void>;
+  addComment: (noteId: string, text: string) => Promise<void>;
+  deleteComment: (noteId: string, commentId: string) => Promise<void>;
 }
 
 export const useNotesStore = create<NotesState>((set, get) => ({
@@ -66,7 +73,17 @@ export const useNotesStore = create<NotesState>((set, get) => ({
   setLocalNotePosition: (id, position) => {
     set({ notes: get().notes.map(n => n._id === id ? { ...n, position } : n) });
   },
+  setLocalNotePositions: (updates) => {
+    const updateMap = new Map(updates.map(u => [u.id, u.position]));
+    set({
+      notes: get().notes.map(n => {
+        if (updateMap.has(n._id)) return { ...n, position: updateMap.get(n._id)! };
+        return n;
+      })
+    });
+  },
   fetchNotes: async (view = 'active', boardId) => {
+    const currentFetchId = ++fetchCounter;
     try {
       let endpoint = '/notes';
       if (view === 'archived') endpoint = '/notes/archived';
@@ -79,7 +96,9 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       }
       
       const res = await api.get(endpoint);
-      set({ notes: res.data.data });
+      if (currentFetchId === fetchCounter) {
+        set({ notes: res.data.data });
+      }
     } catch (error) {
       console.error('Failed to fetch notes', error);
     }
@@ -111,6 +130,7 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       await api.patch(`/notes/${id}`, updates);
     } catch (error) {
       console.error('Failed to update note', error);
+      throw error;
     }
   },
   deleteNote: async (id) => {
@@ -119,6 +139,26 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       await api.delete(`/notes/${id}`);
     } catch (error) {
       console.error('Failed to delete note', error);
+    }
+  },
+  
+  addComment: async (noteId, text) => {
+    try {
+      const res = await api.post(`/notes/${noteId}/comments`, { text });
+      set({ notes: get().notes.map(n => n._id === noteId ? res.data.data : n) });
+    } catch (error) {
+      console.error('Failed to add comment', error);
+      throw error;
+    }
+  },
+
+  deleteComment: async (noteId, commentId) => {
+    try {
+      const res = await api.delete(`/notes/${noteId}/comments/${commentId}`);
+      set({ notes: get().notes.map(n => n._id === noteId ? res.data.data : n) });
+    } catch (error) {
+      console.error('Failed to delete comment', error);
+      throw error;
     }
   }
 }));

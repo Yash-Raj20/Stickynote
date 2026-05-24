@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNotesStore } from '@/store/useNotesStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ThemeConfig } from './theme';
-import { Pencil, SmilePlus } from 'lucide-react';
+import { Pencil, SmilePlus, MessageSquare } from 'lucide-react';
 
 interface NoteFooterProps {
   noteId: string;
@@ -18,6 +18,8 @@ interface NoteFooterProps {
   createdAt?: string;
   updatedAt?: string;
   emitNoteUpdate?: (id: string, updates: Partial<any>) => void;
+  comments?: any[];
+  onCommentClick?: () => void;
 }
 
 function timeAgo(dateStr?: string): string {
@@ -34,7 +36,7 @@ function timeAgo(dateStr?: string): string {
 
 export default function NoteFooter({
   noteId, content, tags, reactions = {}, currentTheme, isAddingTag, setIsAddingTag,
-  lastEditedBy, createdAt, updatedAt, emitNoteUpdate
+  lastEditedBy, createdAt, updatedAt, emitNoteUpdate, comments = [], onCommentClick
 }: NoteFooterProps) {
   const updateNote = useNotesStore(state => state.updateNote);
   const user = useAuthStore(state => state.user);
@@ -111,7 +113,8 @@ export default function NoteFooter({
           );
         })}
         
-        <div className="relative">
+        <div className="relative flex items-center gap-1">
+          {/* Reaction Button */}
           <button 
             onClick={(e) => { e.stopPropagation(); setShowReactions(!showReactions); }}
             className={`p-1 rounded-full hover:bg-black/10 transition-colors opacity-60 hover:opacity-100 ${currentTheme.text}`}
@@ -132,6 +135,18 @@ export default function NoteFooter({
                 </button>
               ))}
             </div>
+          )}
+
+          {/* Comment Button */}
+          {onCommentClick && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onCommentClick(); }}
+              className={`p-1 rounded-full hover:bg-black/10 transition-colors flex items-center gap-1 opacity-60 hover:opacity-100 ${currentTheme.text}`}
+              title="Comments"
+            >
+              <MessageSquare size={14} />
+              {comments && comments.length > 0 && <span className="text-[10px] font-bold">{comments.length}</span>}
+            </button>
           )}
         </div>
       </div>

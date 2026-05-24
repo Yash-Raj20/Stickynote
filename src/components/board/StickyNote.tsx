@@ -7,8 +7,10 @@ import { themeConfig } from './note/theme';
 import toast from 'react-hot-toast';
 import NoteMenu from './note/NoteMenu';
 import NoteFooter from './note/NoteFooter';
+import NoteComments from './note/NoteComments';
 import RichTextEditor, { EditorToolbar } from './note/RichTextEditor';
 import AttachmentZone from './note/AttachmentZone';
+import StickyNoteHeader from './note/StickyNoteHeader';
 import { Link2, ImagePlus, Sparkles, Bot, Wand2, SpellCheck, Undo2 } from 'lucide-react';
 import { addConnectionApi } from './ArrowLayer';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -40,6 +42,7 @@ export default function StickyNote({
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [aiBackup, setAiBackup] = useState<string | null>(null);
   const [isFrameMenuOpen, setIsFrameMenuOpen] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   
   const [localTitle, setLocalTitle] = useState(note.title || '');
   useEffect(() => {
@@ -54,38 +57,67 @@ export default function StickyNote({
     // Save backup before AI modifies content
     setAiBackup(editorInstance.getHTML());
     
-    // Mock AI processing delay
-    await new Promise(r => setTimeout(r, 1000));
     const currentText = editorInstance.getText();
     
-    let newText = '';
-    if (action === 'summarize') {
-      newText = currentText ? `TL;DR: ${currentText.split(' ').slice(0, 10).join(' ')}...` : 'AI: Please write something first!';
-    } else if (action === 'grammar') {
-      newText = `✨ Grammar Fixed: ${currentText}`;
-    } else if (action === 'expand') {
-      newText = `${currentText}\n\n✨ AI Note: This is an expanded thought exploring the topic further. Here are 3 key points:\n1. Better clarity\n2. Deeper insights\n3. Actionable next steps.`;
+    if (!currentText.trim()) {
+      toast.error('Note is empty! Please write something first.');
+      setIsAIProcessing(false);
+      return;
     }
-    
-    // Simulated typing effect
-    editorInstance.commands.setContent('<p><i>✨ AI is typing...</i></p>');
-    await new Promise(r => setTimeout(r, 800));
-    
-    editorInstance.commands.setContent('');
-    const chars = newText.split('');
-    
-    for (let i = 0; i < chars.length; i++) {
-      editorInstance.commands.insertContent(chars[i]);
-      // small delay per character to simulate streaming
-      await new Promise(r => setTimeout(r, 15));
+
+    try {
+      // Call the real AI API
+      const res = await api.post('/ai/edit-note', { action, text: currentText });
+      let newText = res.data.data.result;
+      
+      // Simulated typing effect
+      editorInstance.commands.setContent('<p><i>✨ AI is typing...</i></p>');
+      
+      editorInstance.commands.setContent('');
+      
+      // Format response based on action
+      let finalHtml = '';
+      if (action === 'grammar') {
+        newText = `✨ Grammar Fixed:\n${newText}`;
+        finalHtml = `<p>${newText.replace(/\n/g, '<br>')}</p>`;
+      } else if (action === 'summarize') {
+        newText = `✨ TL;DR: ${newText}`;
+        finalHtml = `<p>${newText.replace(/\n/g, '<br>')}</p>`;
+      } else if (action === 'expand') {
+        newText = `✨ Expanded Thought:\n${newText}`;
+        finalHtml = `<p>${newText.replace(/\n/g, '<br>')}</p>`;
+      } else if (action === 'extract-tasks') {
+        // AI returns raw HTML for task list
+        finalHtml = newText.replace(/```html|```/g, '').trim(); 
+      }
+      
+      // Save to database IMMEDIATELY before animation starts so it won't be lost if user refreshes
+      await updateNote(note._id, { content: finalHtml });
+      emitNoteUpdate?.(note._id, { content: finalHtml });
+      
+      if (action !== 'extract-tasks') {
+        const chars = newText.split('');
+        for (let i = 0; i < chars.length; i++) {
+          // If it's a newline, insert a hard break or paragraph, else just insert text
+          if (chars[i] === '\n') {
+            editorInstance.commands.insertContent('<br>');
+          } else {
+            editorInstance.commands.insertContent(chars[i]);
+          }
+          await new Promise(r => setTimeout(r, 5)); // sped up typing to 5ms
+        }
+      }
+      
+      // Force final synchronization just to be safe
+      editorInstance.commands.setContent(finalHtml);
+      toast.success('AI updated note successfully!');
+      
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save AI changes');
+      handleRevertAI(); // revert if failed
+    } finally {
+      setIsAIProcessing(false);
     }
-    
-    // trigger blur to save
-    const html = editorInstance.getHTML();
-    updateNote(note._id, { content: html });
-    emitNoteUpdate?.(note._id, { content: html });
-    
-    setIsAIProcessing(false);
   };
 
   const handleRevertAI = () => {
@@ -168,16 +200,23 @@ export default function StickyNote({
         }));
     }
 
+    let rafId: number | null = null;
     const handleMove = (moveEvent: PointerEvent) => {
-      const newX = moveEvent.clientX - startX;
-      const newY = moveEvent.clientY - startY;
-      setPosition({ x: newX, y: newY });
-      
-      if (note.isFrame) {
-        childNotes.forEach(child => {
-          useNotesStore.getState().setLocalNotePosition(child.id, { x: newX + child.startOffsetX, y: newY + child.startOffsetY });
-        });
-      }
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const newX = moveEvent.clientX - startX;
+        const newY = moveEvent.clientY - startY;
+        setPosition({ x: newX, y: newY });
+        
+        if (note.isFrame && childNotes.length > 0) {
+          useNotesStore.getState().setLocalNotePositions(
+            childNotes.map(child => ({
+              id: child.id,
+              position: { x: newX + child.startOffsetX, y: newY + child.startOffsetY }
+            }))
+          );
+        }
+      });
     };
 
     const handleUp = (upEvent: PointerEvent) => {
@@ -245,107 +284,36 @@ export default function StickyNote({
         width:  size.width,
         height: size.height,
         cursor: isDragging ? 'grabbing' : 'default',
-        zIndex: isDragging ? 50 : (note.isFrame ? (isFrameMenuOpen ? 60 : 0) : 10),
+        zIndex: isDragging ? 50 : (note.isFrame ? (isFrameMenuOpen ? 60 : 1) : 10),
         touchAction: 'none',
         outline: isConnecting ? '3px dashed #3b82f6' : 'none',
         outlineOffset: isConnecting ? '4px' : '0px',
-        // allow clicking through the center of the frame
-        pointerEvents: note.isFrame && !isDragging ? 'none' : 'auto',
       }}
       onPointerDown={isGridMode ? undefined : handlePointerDown}
       onClick={isConnecting && onConnectEnd ? () => onConnectEnd(note._id) : undefined}
     >
       {/* ═══════ UNIFIED HEADER BAR ═══════ */}
-      <div 
-        className={`flex items-center px-2 pt-2 border-b border-transparent group-hover:border-black/10 transition-colors duration-200 z-20 gap-0.5 ${!isGridMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        style={{ pointerEvents: 'auto' }} // Ensure header is clickable even on frame
-      >
-        {/* LEFT: attach + connect + text formatting (only for owner) */}
-        <div className="flex items-center gap-0.5 flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          {isOwner && (
-            <div className="flex items-center gap-0.5 no-drag">
-              {/* Attach image */}
-              <button
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                className={`p-1 rounded hover:bg-black/10 transition-colors cursor-pointer ${currentTheme.text}`}
-                title="Attach image"
-              >
-                {isUploading
-                  ? <span className="w-4 h-4 flex items-center justify-center"><span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" /></span>
-                  : <ImagePlus size={15} />}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file" className="hidden" multiple accept="image/*,.pdf"
-                onChange={(e) => handleAttachUpload(e.target.files)}
-              />
-
-              {/* Connect arrow */}
-              {!isGridMode && onConnectStart && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onConnectStart(note._id); }}
-                  className={`p-1 rounded hover:bg-black/10 transition-colors cursor-pointer ${currentTheme.text}`}
-                  title="Draw connection arrow"
-                >
-                  <Link2 size={15} />
-                </button>
-              )}
-
-              {/* AI Assistant */}
-              <div className="relative">
-                <div className="flex items-center gap-0.5">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowAI(!showAI); }}
-                    className={`p-1 rounded hover:bg-black/10 transition-colors cursor-pointer ${currentTheme.text} ${isAIProcessing ? 'animate-pulse' : ''}`}
-                    title="Ask AI"
-                  >
-                    <Sparkles size={15} />
-                  </button>
-                  {aiBackup && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleRevertAI(); }}
-                      className={`p-1 rounded hover:bg-black/10 transition-colors cursor-pointer ${currentTheme.text}`}
-                      title="Undo AI changes"
-                    >
-                      <Undo2 size={15} />
-                    </button>
-                  )}
-                </div>
-                {showAI && (
-                  <div className="absolute top-full left-0 mt-1 bg-white dark:bg-surface border border-border shadow-lg rounded-xl py-1.5 flex flex-col min-w-[140px] z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <button onClick={(e) => { e.stopPropagation(); handleAIAction('summarize'); }} className="text-left px-3 py-1.5 text-xs font-medium text-foreground hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-2 transition-colors">
-                      <Bot size={13} className="text-blue-500" /> Summarize
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleAIAction('grammar'); }} className="text-left px-3 py-1.5 text-xs font-medium text-foreground hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-2 transition-colors">
-                      <SpellCheck size={13} className="text-green-500" /> Fix Grammar
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleAIAction('expand'); }} className="text-left px-3 py-1.5 text-xs font-medium text-foreground hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-2 transition-colors">
-                      <Wand2 size={13} className="text-purple-500" /> Expand Idea
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Text formatting toolbar */}
-              <EditorToolbar editor={editorInstance} />
-            </div>
-          )}
-
-          {/* Read-only indicator for shared users */}
-          {!isOwner && (
-            <span className={`text-[10px] ${currentTheme.text} opacity-40 px-1`}>👁️ View only</span>
-          )}
-        </div>
-
-        {/* RIGHT: 3-dot menu (owner only) */}
-        {isOwner && (
-          <NoteMenu
-            noteId={note._id} color={note.color} currentTheme={currentTheme}
-            onAddTagClick={() => setIsAddingTag(true)}
-            onMenuOpenChange={setIsFrameMenuOpen}
-          />
-        )}
-      </div>
+      <StickyNoteHeader
+        isGridMode={isGridMode}
+        isOwner={isOwner}
+        isReadOnly={isReadOnly}
+        isUploading={isUploading}
+        fileInputRef={fileInputRef}
+        handleAttachUpload={handleAttachUpload}
+        onConnectStart={onConnectStart}
+        noteId={note._id}
+        noteColor={note.color}
+        currentTheme={currentTheme}
+        showAI={showAI}
+        setShowAI={setShowAI}
+        isAIProcessing={isAIProcessing}
+        aiBackup={aiBackup}
+        handleAIAction={handleAIAction}
+        handleRevertAI={handleRevertAI}
+        editorInstance={editorInstance}
+        setIsAddingTag={setIsAddingTag}
+        setIsFrameMenuOpen={setIsFrameMenuOpen}
+      />
 
       {/* Note Content (Title + Editor) */}
       <div className="flex-1 px-4 pb-2 no-drag overflow-hidden flex flex-col gap-1 cursor-text">
@@ -397,11 +365,18 @@ export default function StickyNote({
           noteId={note._id} content={note.content} tags={note.tags} currentTheme={currentTheme}
           isAddingTag={isAddingTag} setIsAddingTag={setIsAddingTag}
           reactions={note.reactions}
+          comments={note.comments}
+          onCommentClick={() => setIsCommentsOpen(!isCommentsOpen)}
           lastEditedBy={note.lastEditedBy}
           createdAt={note.createdAt}
           updatedAt={note.updatedAt}
           emitNoteUpdate={emitNoteUpdate}
         />
+      )}
+
+      {/* Figma-style Comments Thread */}
+      {isCommentsOpen && (
+        <NoteComments note={note} onClose={() => setIsCommentsOpen(false)} emitNoteUpdate={emitNoteUpdate} />
       )}
 
       {/* Blue corner accent */}

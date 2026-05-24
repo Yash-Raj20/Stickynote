@@ -1,5 +1,6 @@
 import React from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import Image from 'next/image';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,16 +8,23 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-      
+
       {/* Left Side: Brand and Decorative Board */}
       <div className="hidden md:flex md:w-1/2 lg:w-[45%] auth-split-left border-r border-border relative flex-col items-center justify-center overflow-hidden">
-        
+
         {/* Brand Header */}
         <div className="absolute top-8 left-8 flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-theme-tertiary flex items-center justify-center text-white font-bold shadow-lg">
-            S
+          <div className="flex items-center gap-2 mb-6">
+            <Image
+              src="/logo-new.png"
+              alt="Sticky Notes Logo"
+              width={44}
+              height={44}
+              className="h-11 w-11 object-cover shrink-0"
+              priority
+            />
+            <span className="text-3xl font-bold text-theme-primary tracking-tight">StickyNotes</span>
           </div>
-          <span className="text-2xl font-bold text-theme-primary tracking-tight">StickyNotes</span>
         </div>
 
         {/* Decorative Sticky Notes matching the user's mockup aesthetic */}
@@ -27,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               Don't forget to buy oat milk!
             </p>
           </div>
-          
+
           {/* Blue Note */}
           <div className="absolute top-20 right-4 w-48 h-48 bg-[#a8c6fa] dark:bg-[#5b7fc4] rounded shadow-lg transform rotate-6 p-4 border border-black/5 text-[#333]">
             <p className="font-medium text-sm" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", sans-serif' }}>
@@ -37,7 +45,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
           {/* Pink Note */}
           <div className="absolute bottom-4 left-8 w-48 h-48 bg-[#ffcbf2] dark:bg-[#cc8cb9] rounded shadow-lg transform rotate-2 border border-black/5" />
-          
+
           {/* Green Note (Top most) */}
           <div className="absolute top-16 left-12 w-56 h-56 bg-[#c1f5b0] dark:bg-[#86b876] rounded shadow-xl transform -rotate-1 p-5 border border-black/5 text-[#333] z-10">
             <p className="font-medium text-base" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", sans-serif' }}>
@@ -49,8 +57,21 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Right Side: Auth Forms */}
-      <div className="w-full md:w-1/2 lg:w-[55%] flex flex-col items-center justify-center p-6 sm:p-12 relative">
-        <div className="w-full max-w-md z-10">
+      <div className="w-full md:w-1/2 lg:w-[55%] flex flex-col items-center justify-center p-6 sm:p-12 relative min-h-[100dvh] md:min-h-screen">
+        {/* Mobile Logo */}
+        <div className="absolute top-6 left-6 flex items-center gap-2 md:hidden">
+          <Image
+            src="/logo-new.png"
+            alt="Sticky Notes Logo"
+            width={36}
+            height={36}
+            className="h-9 w-9 object-cover shrink-0"
+            priority
+          />
+          <span className="text-2xl font-bold text-theme-primary tracking-tight">StickyNotes</span>
+        </div>
+
+        <div className="w-full max-w-md z-10 mt-16 md:mt-0">
           {children}
         </div>
       </div>

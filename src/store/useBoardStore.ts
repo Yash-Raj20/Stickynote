@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import api from '@/lib/api';
 
 export interface Board {
@@ -19,9 +20,11 @@ interface BoardState {
   deleteBoard: (id: string) => Promise<void>;
 }
 
-export const useBoardStore = create<BoardState>((set, get) => ({
-  boards: [],
-  activeBoardId: null,
+export const useBoardStore = create<BoardState>()(
+  persist(
+    (set, get) => ({
+      boards: [],
+      activeBoardId: null,
 
   setActiveBoardId: (id) => set({ activeBoardId: id }),
 
@@ -53,4 +56,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     const next = get().boards.filter((b) => b._id !== id);
     set({ boards: next, activeBoardId: get().activeBoardId === id ? null : get().activeBoardId });
   },
-}));
+}),
+    {
+      name: 'board-storage', // name of the item in the storage (must be unique)
+      partialize: (state) => ({ activeBoardId: state.activeBoardId }), // only save activeBoardId
+    }
+  )
+);

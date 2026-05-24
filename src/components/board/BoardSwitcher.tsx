@@ -51,7 +51,7 @@ export default function BoardSwitcher() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="mt-1 z-50 bg-surface/50 border border-border rounded-xl py-1 overflow-hidden">
+        <div className="absolute left-3 right-3 top-full mt-1 z-[100] bg-surface border border-border rounded-xl py-1 overflow-hidden shadow-xl max-h-72 overflow-y-auto">
           {/* Default Board */}
           <BoardItem
             emoji="🏠" name="Default Board" active={activeBoardId === null}

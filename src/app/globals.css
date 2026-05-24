@@ -50,6 +50,16 @@
     background-image: radial-gradient(color-mix(in srgb, var(--foreground) 12%, transparent) 1px, transparent 1px);
     background-size: 28px 28px;
   }
+  
+  .animate-magic-gradient {
+    background-size: 200% auto;
+    animation: magic-gradient-shimmer 4s linear infinite;
+  }
+}
+
+@keyframes magic-gradient-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: -200% 50%; }
 }
 
 body {
