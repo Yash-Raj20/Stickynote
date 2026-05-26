@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSocket } from '@/hooks/useSocket';
 
 interface RemoteCursor {
   userId: string;
@@ -30,50 +30,47 @@ interface RemoteCursorsProps {
  */
 export default function RemoteCursors({ boardId, pan, scale }: RemoteCursorsProps) {
   const [cursors, setCursors] = useState<Record<string, RemoteCursor>>({});
-  const token = useAuthStore.getState().token;
+  const currentUser = useAuthStore(state => state.user);
+  const { socket } = useSocket(boardId);
 
   useEffect(() => {
-    if (!token) return;
+    if (!socket.current) return;
 
-    const socket: Socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000', {
-      auth: { token },
-      transports: ['websocket'],
-    });
-
-    const room = boardId || 'default';
-    socket.emit('join-board', room);
-
-    socket.on('remote-cursor', (data: RemoteCursor) => {
+    const handleRemoteCursor = (data: RemoteCursor) => {
+      // Don't render our own cursor (prevent ghost cursors due to multiple event firing or overlapping)
+      if (data.userId === currentUser?._id) return;
       setCursors((prev) => ({ ...prev, [data.userId]: data }));
-    });
+    };
 
-    socket.on('user-left', ({ userId }: { userId: string }) => {
+    const handleUserLeft = ({ userId }: { userId: string }) => {
       setCursors((prev) => {
         const next = { ...prev };
         delete next[userId];
         return next;
       });
-    });
+    };
+
+    socket.current.on('remote-cursor', handleRemoteCursor);
+    socket.current.on('user-left', handleUserLeft);
 
     return () => {
-      socket.emit('leave-board', room);
-      socket.disconnect();
+      if (socket.current) {
+        socket.current.off('remote-cursor', handleRemoteCursor);
+        socket.current.off('user-left', handleUserLeft);
+      }
     };
-  }, [boardId, token]);
+  }, [socket.current, currentUser?._id]);
 
   return (
     <>
       {Object.values(cursors).map((cursor) => {
         const color = getUserColor(cursor.userId);
-        // Transform canvas coords → screen coords
-        const screenX = cursor.x * scale + pan.x;
-        const screenY = cursor.y * scale + pan.y;
 
         return (
           <div
             key={cursor.userId}
             className="pointer-events-none absolute z-50 transition-all duration-100"
-            style={{ left: screenX, top: screenY }}
+            style={{ left: cursor.x, top: cursor.y }}
           >
             {/* Cursor dot */}
             <svg width="16" height="16" viewBox="0 0 24 24" fill={color} className="drop-shadow-md">

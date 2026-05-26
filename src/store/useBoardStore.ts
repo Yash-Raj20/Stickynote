@@ -6,7 +6,8 @@ export interface Board {
   _id: string;
   name: string;
   emoji: string;
-  userId: string;
+  userId: { _id: string; name: string; email: string } | string;
+  sharedWith?: { _id: string; name: string; email: string }[];
   createdAt: string;
 }
 
@@ -18,6 +19,7 @@ interface BoardState {
   createBoard: (name: string, emoji: string) => Promise<Board>;
   updateBoard: (id: string, data: { name?: string; emoji?: string }) => Promise<void>;
   deleteBoard: (id: string) => Promise<void>;
+  shareBoard: (id: string, email: string) => Promise<void>;
 }
 
 export const useBoardStore = create<BoardState>()(
@@ -55,6 +57,13 @@ export const useBoardStore = create<BoardState>()(
     await api.delete(`/boards/${id}`);
     const next = get().boards.filter((b) => b._id !== id);
     set({ boards: next, activeBoardId: get().activeBoardId === id ? null : get().activeBoardId });
+  },
+
+  shareBoard: async (id, email) => {
+    const res = await api.post(`/boards/${id}/share`, { email });
+    set({
+      boards: get().boards.map((b) => (b._id === id ? res.data.data : b)),
+    });
   },
 }),
     {

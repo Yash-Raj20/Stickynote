@@ -90,8 +90,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
       if (view === 'trashed') endpoint = '/notes/trashed';
       if (view === 'shared') endpoint = '/notes/shared';
       
-      // Append boardId param for default (active) view
-      if (view === 'active' && boardId !== undefined) {
+      // Append boardId param for active board view
+      if (view === 'active') {
         endpoint = boardId ? `/notes?boardId=${boardId}` : '/notes';
       }
       

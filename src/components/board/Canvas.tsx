@@ -11,8 +11,12 @@ import ShareModal from './note/ShareModal';
 import Minimap from './Minimap';
 import ArrowLayer, { addConnectionApi } from './ArrowLayer';
 import RemoteCursors from './RemoteCursors';
+import LaserLayer from './LaserLayer';
+import BoardTopBar from './BoardTopBar';
+import { useUIStore } from '@/store/useUIStore';
 import { exportAsPng, exportAsPdf } from '@/lib/exportBoard';
 import { Download, FileImage } from 'lucide-react';
+import Toolbar from './Toolbar';
 
 export default function Canvas() {
   const notes        = useNotesStore(state => state.notes);
@@ -33,12 +37,17 @@ export default function Canvas() {
   const [pan, setPan]     = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
+  const guides = useUIStore(state => state.guides);
+  const toolMode = useUIStore(state => state.toolMode);
 
   // ── Shared tab state ──────────────────────────────────────────────────────
   const [sharedTab, setSharedTab] = useState<'with_me' | 'by_me'>('with_me');
 
   // ── Mind-map connection mode ──────────────────────────────────────────────
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  
+  // ── Pinch to zoom state ───────────────────────────────────────────────────
+  const touchStartRef = useRef<{ dist: number, scale: number, center: {x: number, y: number} }>({ dist: 0, scale: 1, center: {x: 0, y: 0} });
 
   const handleConnectStart = (noteId: string) => setConnectingFrom(noteId);
   const handleConnectEnd = useCallback(async (targetId: string) => {
@@ -62,7 +71,7 @@ export default function Canvas() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // ── Wheel handler (zoom + pan) ────────────────────────────────────────────
+  // ── Wheel & Touch handler (zoom + pan) ───────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -77,11 +86,48 @@ export default function Canvas() {
       }
     };
 
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+        
+        setScale(currentScale => {
+          touchStartRef.current = { dist, scale: currentScale, center: { x: 0, y: 0 } };
+          return currentScale;
+        });
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+        
+        const initial = touchStartRef.current;
+        if (initial.dist > 0) {
+          const delta = dist / initial.dist;
+          const newScale = Math.min(Math.max(0.2, initial.scale * delta), 3);
+          setScale(newScale);
+        }
+      }
+    };
+
     canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    
+    return () => {
+      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+    };
   }, []);
 
-  // ── Pointer drag (pan) + cursor emit ─────────────────────────────────────
+  // ── Pointer drag (pan) ───────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent) => {
     if (e.button !== 1 && !(e.target as HTMLElement).hasAttribute('data-canvas')) return;
     e.preventDefault();
@@ -90,10 +136,7 @@ export default function Canvas() {
     const startY = e.clientY - pan.y;
 
     const onMove = (e: PointerEvent) => {
-      const newPan = { x: e.clientX - startX, y: e.clientY - startY };
-      setPan(newPan);
-      // Emit cursor position in canvas space
-      emitCursorMove((e.clientX - newPan.x) / scale, (e.clientY - newPan.y) / scale);
+      setPan({ x: e.clientX - startX, y: e.clientY - startY });
     };
     const onUp = () => {
       setIsPanning(false);
@@ -104,12 +147,54 @@ export default function Canvas() {
     document.addEventListener('pointerup', onUp);
   };
 
+  // ── Emit cursor on normal move ───────────────────────────────────────────
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!canvasRef.current) return;
+    // Don't emit if panning to save performance, or we can emit anyway.
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - pan.x) / scale;
+    const y = (e.clientY - rect.top - pan.y) / scale;
+    
+    // Throttle emitting slightly by ignoring tiny movements if needed, but for now just emit
+    emitCursorMove(x, y);
+  };
+
   // ── Export helpers ────────────────────────────────────────────────────────
   const handleExportPng = async () => {
     if (canvasRef.current) await exportAsPng(canvasRef.current);
   };
   const handleExportPdf = async () => {
     if (canvasRef.current) await exportAsPdf(canvasRef.current);
+  };
+
+  // Zoom helpers
+  const handleZoomIn  = () => setScale(s => Math.min(3, Math.floor(s * 10 + 1) / 10));
+  const handleZoomOut = () => setScale(s => Math.max(0.1, Math.ceil(s * 10 - 1) / 10));
+  const handleResetZoom  = () => { setScale(1); setPan({ x: 0, y: 0 }); };
+  const handleFitScreen  = () => {
+    if (!notes.length) { setScale(1); setPan({ x: 0, y: 0 }); return; }
+    const minX = Math.min(...notes.map(n => n.position.x));
+    const minY = Math.min(...notes.map(n => n.position.y));
+    const maxX = Math.max(...notes.map(n => n.position.x + (n.size?.width || 250)));
+    const maxY = Math.max(...notes.map(n => n.position.y + (n.size?.height || 250)));
+    
+    const W = canvasRef.current ? canvasRef.current.clientWidth : window.innerWidth - 240;
+    const H = canvasRef.current ? canvasRef.current.clientHeight : window.innerHeight - 80;
+    
+    const padding = 80;
+    const notesWidth = maxX - minX;
+    const notesHeight = maxY - minY;
+    
+    const scaleX = (W - padding * 2) / notesWidth;
+    const scaleY = (H - padding * 2) / notesHeight;
+    let s = Math.min(scaleX, scaleY, 1.5); 
+    s = Math.max(0.1, s);
+    
+    const panX = (W / 2) - ((minX + notesWidth / 2) * s);
+    const panY = (H / 2) - ((minY + notesHeight / 2) * s);
+    
+    setScale(Math.round(s * 100) / 100);
+    setPan({ x: Math.round(panX), y: Math.round(panY) });
   };
 
   // ═════════════════════════════ GRID VIEW ════════════════════════════════
@@ -171,7 +256,8 @@ export default function Canvas() {
       ref={canvasRef}
       className="w-full h-full overflow-hidden absolute inset-0"
       onPointerDown={handlePointerDown}
-      style={{ touchAction: 'none', cursor: isPanning ? 'grabbing' : 'grab' }}
+      onPointerMove={handlePointerMove}
+      style={{ touchAction: 'none', cursor: isPanning ? 'grabbing' : (toolMode === 'hand' ? 'grab' : (toolMode === 'arrow' ? 'crosshair' : 'default')) }}
       data-canvas="true"
     >
       {/* Transform layer */}
@@ -179,7 +265,7 @@ export default function Canvas() {
         ref={innerRef}
         className="origin-top-left transition-transform duration-75 will-change-transform"
         data-canvas="true"
-        style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, width: '100vw', height: '100vh' }}
+        style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, width: '100vw', height: '100vh', pointerEvents: toolMode === 'hand' ? 'none' : 'auto' }}
       >
         {/* SVG Arrow connections */}
         <ArrowLayer notes={notes} pan={pan} scale={scale} />
@@ -197,10 +283,25 @@ export default function Canvas() {
           />
         ))}
 
-        {/* Remote collaborator cursors */}
         <div data-html2canvas-ignore="true">
           <RemoteCursors boardId={activeBoardId} pan={pan} scale={scale} />
+          <LaserLayer boardId={activeBoardId} scale={scale} pan={pan} canvasRef={canvasRef} />
         </div>
+        
+        {/* Smart Alignment Guides */}
+        {guides.map((g, i) => (
+          <div
+            key={i}
+            className="absolute z-[100] pointer-events-none"
+            style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.7)', // red-500 with opacity
+              left: g.axis === 'x' ? g.pos : -10000,
+              top: g.axis === 'y' ? g.pos : -10000,
+              width: g.axis === 'y' ? 20000 : 1.5,
+              height: g.axis === 'x' ? 20000 : 1.5,
+            }}
+          />
+        ))}
       </div>
 
       {/* Minimap */}
@@ -215,26 +316,32 @@ export default function Canvas() {
         />
       </div>
 
-      {/* Export buttons */}
-      <div data-html2canvas-ignore="true" className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-surface/80 backdrop-blur-md border border-border rounded-full px-3 py-1.5 shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-300">
-        <button onClick={handleExportPng} className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-input-bg transition-colors text-foreground/70">
-          <FileImage size={14} /> PNG
-        </button>
-        <div className="w-px h-4 bg-border" />
-        <button onClick={handleExportPdf} className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-input-bg transition-colors text-foreground/70">
-          <Download size={14} /> PDF
-        </button>
+      {/* ── Figma-style Top Bar ── */}
+      <div data-html2canvas-ignore="true">
+        <BoardTopBar
+          scale={scale}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onFitScreen={handleFitScreen}
+          onResetZoom={handleResetZoom}
+          onExportPng={handleExportPng}
+          onExportPdf={handleExportPdf}
+        />
       </div>
 
       {/* Connection mode indicator */}
       {connectingFrom && (
-        <div data-html2canvas-ignore="true" className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg animate-bounce">
+        <div data-html2canvas-ignore="true" className="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg animate-bounce">
           Click another note to draw an arrow — or press Esc to cancel
         </div>
       )}
 
       <div data-html2canvas-ignore="true">
         <ShareModal />
+      </div>
+
+      <div data-html2canvas-ignore="true">
+        <Toolbar />
       </div>
     </div>
   );

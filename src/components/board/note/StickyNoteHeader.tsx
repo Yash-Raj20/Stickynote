@@ -38,7 +38,7 @@ export default function StickyNoteHeader({
       style={{ pointerEvents: 'auto' }}
     >
       <div className="flex items-center gap-0.5 flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        {isOwner && (
+        {!isReadOnly && (
           <div className="flex items-center gap-0.5 no-drag">
             {/* Attach image */}
             <button
@@ -111,13 +111,13 @@ export default function StickyNoteHeader({
         )}
 
         {/* Read-only indicator */}
-        {!isOwner && (
+        {isReadOnly && (
           <span className={`text-[10px] ${currentTheme.text} opacity-40 px-1`}>👁️ View only</span>
         )}
       </div>
 
       {/* RIGHT: 3-dot menu */}
-      {isOwner && (
+      {!isReadOnly && (
         <NoteMenu
           noteId={noteId} color={noteColor} currentTheme={currentTheme}
           onAddTagClick={() => setIsAddingTag(true)}

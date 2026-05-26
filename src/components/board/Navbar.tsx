@@ -41,7 +41,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="h-[70px] border-b border-border bg-surface flex items-center justify-between px-4 sm:px-6 shrink-0 z-40 shadow-sm relative gap-3 sm:gap-4">
+    <header className="h-14 border-b border-border bg-surface flex items-center justify-between px-4 sm:px-6 shrink-0 z-50 shadow-sm relative gap-3 sm:gap-4">
 
       {/* Left: Mobile Menu Toggle & Desktop Actions */}
       <div className="flex items-center gap-3 sm:gap-5 shrink-0">
@@ -57,9 +57,9 @@ export default function Navbar() {
           <Image
             src="/logo-new.png"
             alt="Sticky Notes Logo"
-            width={40}
-            height={40}
-            className="h-15 w-15 object-cover shrink-0"
+            width={32}
+            height={32}
+            className="h-8 w-8 object-cover shrink-0"
             priority
           />
           <span className="hidden sm:block text-lg sm:text-xl font-black text-theme-primary tracking-tight">StickyNotes</span>
@@ -83,7 +83,7 @@ export default function Navbar() {
         {/* Desktop Search Bar (>= lg) */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="hidden lg:flex items-center w-64 h-11 px-4 rounded-full bg-input-bg hover:bg-input-bg/80 border border-transparent hover:border-border text-foreground/40 transition-all text-sm group mr-2"
+          className="hidden lg:flex items-center w-52 h-9 px-4 rounded-full bg-input-bg hover:bg-input-bg/80 border border-transparent hover:border-border text-foreground/40 transition-all text-sm group mr-2"
         >
           <Search size={18} className="mr-2 group-hover:text-theme-primary transition-colors" />
           <span className="flex-1 text-left">Search notes...</span>

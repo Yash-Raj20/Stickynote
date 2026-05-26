@@ -44,8 +44,8 @@ export default function AIMenu() {
           content: note.content,
           color: note.color || 'yellow',
           boardId: activeBoardId || undefined,
-          position: { x: startX + (i * 260), y: startY + (i % 2 === 0 ? 0 : 50) },
-          size: { width: 240, height: 240 },
+          position: { x: startX + (i * 370), y: startY + (i % 2 === 0 ? 0 : 50) },
+          size: { width: 350, height: 250 },
         });
       });
       toast.success('Brainstorming complete!');
@@ -248,7 +248,7 @@ export default function AIMenu() {
         color: 'purple',
         boardId: activeBoardId || undefined,
         position: { x: 50, y: 50 },
-        size: { width: 400, height: 500 },
+        size: { width: 450, height: 450 },
       });
 
       toast.success('Summary generated!');

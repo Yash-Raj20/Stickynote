@@ -5,7 +5,6 @@ import api from '@/lib/api';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import emailjs from '@emailjs/browser';
 import Image from 'next/image';
 
 export default function ForgotPasswordPage() {
@@ -17,35 +16,8 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Get Reset Token from backend
-      const res = await api.post('/auth/forgot-password', { email });
-      const resetToken = res.data.data.resetToken;
-
-      // 2. Generate Reset Link
-      const resetLink = `${window.location.origin}/reset-password/${resetToken}`;
-
-      // 3. Send Email using EmailJS
-      const serviceId = process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID;
-      const templateId = process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID;
-      const publicKey = process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY;
-
-      if (!serviceId || !templateId || !publicKey) {
-        console.warn('EmailJS is not configured. Reset link:', resetLink);
-        toast.success(`Mock Email Sent! Check console for link.`);
-        setIsSent(true);
-        setLoading(false);
-        return;
-      }
-
-      await emailjs.send(
-        serviceId,
-        templateId,
-        {
-          to_email: email,
-          reset_link: resetLink,
-        },
-        publicKey
-      );
+      // Backend will now handle sending the email directly
+      await api.post('/auth/forgot-password', { email });
 
       toast.success('Password reset link sent to your email!');
       setIsSent(true);

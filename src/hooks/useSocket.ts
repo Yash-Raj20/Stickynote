@@ -82,8 +82,8 @@ export const useSocket = (boardId: string | null) => {
   }, [boardId]);
 
   /** Emit a cursor position to collaborators */
-  const emitCursorMove = useCallback((x: number, y: number) => {
-    socketRef.current?.emit('cursor-move', { boardId: boardId || 'default', x, y });
+  const emitCursorMove = useCallback((x: number, y: number, isLaser?: boolean) => {
+    socketRef.current?.emit('cursor-move', { boardId: boardId || 'default', x, y, isLaser });
   }, [boardId]);
 
   return { emitNoteMove, emitNoteUpdate, emitCursorMove, socket: socketRef };
