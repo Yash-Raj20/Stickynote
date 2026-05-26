@@ -58,6 +58,35 @@ export default function AIMenu() {
     }
   };
 
+  const handleActionPlan = async () => {
+    if (activeNotes.length === 0) {
+      toast.error('No notes on the board to analyze');
+      return;
+    }
+    setLoadingType('actionPlan');
+    try {
+      const payload = activeNotes.map(n => ({ title: n.title, content: n.content }));
+      const res = await api.post('/ai/action-plan', { notes: payload });
+      const { actionPlan } = res.data.data;
+
+      addNote({
+        title: '📋 Action Plan & To-Do',
+        content: actionPlan,
+        color: 'yellow',
+        boardId: activeBoardId || undefined,
+        position: { x: 50, y: 50 },
+        size: { width: 450, height: 600 },
+      });
+
+      toast.success('Action Plan generated!');
+      setIsOpen(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'AI request failed');
+    } finally {
+      setLoadingType(null);
+    }
+  };
+
   const handleCategorize = async () => {
     if (activeNotes.length < 3) {
       toast.error('You need at least 3 notes to categorize');
@@ -162,7 +191,7 @@ export default function AIMenu() {
       // Optimistically update all notes at once for a satisfying visual effect
       const updatesPromises = colorUpdates.map((u: any) => updateNote(u.id, { color: u.color }));
       await Promise.all(updatesPromises);
-      
+
       toast.success('Notes magically colored!');
       setIsOpen(false);
     } catch (err: any) {
@@ -199,7 +228,7 @@ export default function AIMenu() {
       for (const conn of connections) {
         await addConnectionApi(conn.sourceId, conn.targetId);
       }
-      
+
       toast.success(`Generated ${connections.length} mind map connections!`);
       setIsOpen(false);
     } catch (err: any) {
@@ -285,8 +314,8 @@ export default function AIMenu() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-none" onClick={() => setIsOpen(false)} />
-          <div className="fixed sm:absolute top-1/2 sm:top-full left-1/2 sm:left-auto right-auto sm:right-0 -translate-x-1/2 sm:translate-x-0 -translate-y-1/2 sm:translate-y-0 mt-0 sm:mt-3 w-[90vw] sm:w-80 max-w-sm bg-surface border border-border rounded-xl shadow-2xl p-4 z-50 animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center mb-4">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] sm:w-[600px] max-w-2xl bg-surface border border-border rounded-xl shadow-2xl p-5 sm:p-6 z-50 animate-in fade-in zoom-in duration-200 max-h-[85vh] overflow-y-auto custom-scrollbar flex flex-col">
+            <div className="flex justify-between items-center mb-4 shrink-0">
               <h3 className="font-bold text-foreground flex items-center gap-2">
                 <BrainCircuit size={18} className="text-theme-primary" /> AI Tools
               </h3>
@@ -295,7 +324,7 @@ export default function AIMenu() {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Brainstorm */}
               <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-lg border border-border">
                 <p className="text-xs font-semibold text-foreground/70 mb-2 uppercase tracking-wide">Brainstorm Ideas</p>
@@ -315,6 +344,21 @@ export default function AIMenu() {
                   Generate Notes
                 </button>
               </div>
+
+              {/* Extract Action Plan */}
+              <button
+                onClick={handleActionPlan}
+                disabled={!!loadingType}
+                className="w-full flex items-center gap-3 p-3 bg-slate-50 dark:bg-white/5 hover:bg-orange-500/5 border border-border hover:border-orange-500/30 rounded-lg transition-colors text-left"
+              >
+                <div className="bg-orange-100 dark:bg-orange-500/20 text-orange-500 p-2 rounded-md">
+                  {loadingType === 'actionPlan' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-foreground">Extract Action Plan</p>
+                  <p className="text-xs text-foreground/60">Generate To-Do list from all notes</p>
+                </div>
+              </button>
 
               {/* Categorize */}
               <button

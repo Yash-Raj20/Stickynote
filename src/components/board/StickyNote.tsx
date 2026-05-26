@@ -46,7 +46,7 @@ export default function StickyNote({
   const [isFrameMenuOpen, setIsFrameMenuOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const toolMode = useUIStore(state => state.toolMode);
-  
+
   const [localTitle, setLocalTitle] = useState(note.title || '');
   useEffect(() => {
     setLocalTitle(note.title || '');
@@ -56,12 +56,12 @@ export default function StickyNote({
     if (!editorInstance) return;
     setIsAIProcessing(true);
     setShowAI(false);
-    
+
     // Save backup before AI modifies content
     setAiBackup(editorInstance.getHTML());
-    
+
     const currentText = editorInstance.getText();
-    
+
     if (!currentText.trim()) {
       toast.error('Note is empty! Please write something first.');
       setIsAIProcessing(false);
@@ -72,12 +72,12 @@ export default function StickyNote({
       // Call the real AI API
       const res = await api.post('/ai/edit-note', { action, text: currentText });
       let newText = res.data.data.result;
-      
+
       // Simulated typing effect
       editorInstance.commands.setContent('<p><i>✨ AI is typing...</i></p>');
-      
+
       editorInstance.commands.setContent('');
-      
+
       // Format response based on action
       let finalHtml = '';
       if (action === 'grammar') {
@@ -91,13 +91,13 @@ export default function StickyNote({
         finalHtml = `<p>${newText.replace(/\n/g, '<br>')}</p>`;
       } else if (action === 'extract-tasks') {
         // AI returns raw HTML for task list
-        finalHtml = newText.replace(/```html|```/g, '').trim(); 
+        finalHtml = newText.replace(/```html|```/g, '').trim();
       }
-      
+
       // Save to database IMMEDIATELY before animation starts so it won't be lost if user refreshes
       await updateNote(note._id, { content: finalHtml });
       emitNoteUpdate?.(note._id, { content: finalHtml });
-      
+
       if (action !== 'extract-tasks') {
         const chars = newText.split('');
         for (let i = 0; i < chars.length; i++) {
@@ -110,11 +110,11 @@ export default function StickyNote({
           await new Promise(r => setTimeout(r, 5)); // sped up typing to 5ms
         }
       }
-      
+
       // Force final synchronization just to be safe
       editorInstance.commands.setContent(finalHtml);
       toast.success('AI updated note successfully!');
-      
+
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save AI changes');
       handleRevertAI(); // revert if failed
@@ -193,17 +193,17 @@ export default function StickyNote({
     if ((e.target as HTMLElement).closest('.no-drag')) return;
     e.preventDefault();
     setIsDragging(true);
-    
+
     const rect = e.currentTarget.getBoundingClientRect();
     const currentScale = rect.width / (e.currentTarget as HTMLElement).offsetWidth || 1;
-    
+
     const startX = (e.clientX / currentScale) - position.x;
     const startY = (e.clientY / currentScale) - position.y;
 
     // Gather children if it's a frame
-    let childNotes: { id: string; startOffsetX: number; startOffsetY: number; originalPos: {x: number, y: number} }[] = [];
+    let childNotes: { id: string; startOffsetX: number; startOffsetY: number; originalPos: { x: number, y: number } }[] = [];
     const allNotes = useNotesStore.getState().notes;
-    
+
     if (note.isFrame) {
       const fw = size.width;
       const fh = size.height;
@@ -213,15 +213,15 @@ export default function StickyNote({
       childNotes = allNotes
         .filter(n => !n.isFrame && n._id !== note._id)
         .filter(n => {
-           const cx = n.position.x + n.size.width / 2;
-           const cy = n.position.y + n.size.height / 2;
-           return cx > fx && cx < fx + fw && cy > fy && cy < fy + fh;
+          const cx = n.position.x + n.size.width / 2;
+          const cy = n.position.y + n.size.height / 2;
+          return cx > fx && cx < fx + fw && cy > fy && cy < fy + fh;
         })
         .map(n => ({
-           id: n._id,
-           originalPos: { ...n.position },
-           startOffsetX: n.position.x - fx,
-           startOffsetY: n.position.y - fy,
+          id: n._id,
+          originalPos: { ...n.position },
+          startOffsetX: n.position.x - fx,
+          startOffsetY: n.position.y - fy,
         }));
     }
 
@@ -233,11 +233,11 @@ export default function StickyNote({
       rafId = requestAnimationFrame(() => {
         let newX = (moveEvent.clientX / currentScale) - startX;
         let newY = (moveEvent.clientY / currentScale) - startY;
-        
+
         // --- Smart Alignment Snapping ---
         const threshold = 10 / currentScale;
         let activeGuides: GuideLine[] = [];
-        
+
         let snappedX = false;
         let snappedY = false;
 
@@ -245,19 +245,19 @@ export default function StickyNote({
           if (!snappedX) {
             if (Math.abs(newX - n.position.x) < threshold) { newX = n.position.x; activeGuides.push({ axis: 'x', pos: newX }); snappedX = true; }
             else if (Math.abs((newX + size.width) - (n.position.x + n.size.width)) < threshold) { newX = n.position.x + n.size.width - size.width; activeGuides.push({ axis: 'x', pos: newX + size.width }); snappedX = true; }
-            else if (Math.abs((newX + size.width/2) - (n.position.x + n.size.width/2)) < threshold) { newX = n.position.x + n.size.width/2 - size.width/2; activeGuides.push({ axis: 'x', pos: newX + size.width/2 }); snappedX = true; }
+            else if (Math.abs((newX + size.width / 2) - (n.position.x + n.size.width / 2)) < threshold) { newX = n.position.x + n.size.width / 2 - size.width / 2; activeGuides.push({ axis: 'x', pos: newX + size.width / 2 }); snappedX = true; }
           }
           if (!snappedY) {
             if (Math.abs(newY - n.position.y) < threshold) { newY = n.position.y; activeGuides.push({ axis: 'y', pos: newY }); snappedY = true; }
             else if (Math.abs((newY + size.height) - (n.position.y + n.size.height)) < threshold) { newY = n.position.y + n.size.height - size.height; activeGuides.push({ axis: 'y', pos: newY + size.height }); snappedY = true; }
-            else if (Math.abs((newY + size.height/2) - (n.position.y + n.size.height/2)) < threshold) { newY = n.position.y + n.size.height/2 - size.height/2; activeGuides.push({ axis: 'y', pos: newY + size.height/2 }); snappedY = true; }
+            else if (Math.abs((newY + size.height / 2) - (n.position.y + n.size.height / 2)) < threshold) { newY = n.position.y + n.size.height / 2 - size.height / 2; activeGuides.push({ axis: 'y', pos: newY + size.height / 2 }); snappedY = true; }
           }
           if (snappedX && snappedY) break;
         }
 
         useUIStore.getState().setGuides(activeGuides);
         setPosition({ x: newX, y: newY });
-        
+
         if (note.isFrame && childNotes.length > 0) {
           useNotesStore.getState().setLocalNotePositions(
             childNotes.map(child => ({
@@ -272,10 +272,10 @@ export default function StickyNote({
     const handleUp = (upEvent: PointerEvent) => {
       setIsDragging(false);
       useUIStore.getState().clearGuides();
-      
+
       let finalX = (upEvent.clientX / currentScale) - startX;
       let finalY = (upEvent.clientY / currentScale) - startY;
-      
+
       const threshold = 10 / currentScale;
       let snappedX = false;
       let snappedY = false;
@@ -284,18 +284,18 @@ export default function StickyNote({
         if (!snappedX) {
           if (Math.abs(finalX - n.position.x) < threshold) { finalX = n.position.x; snappedX = true; }
           else if (Math.abs((finalX + size.width) - (n.position.x + n.size.width)) < threshold) { finalX = n.position.x + n.size.width - size.width; snappedX = true; }
-          else if (Math.abs((finalX + size.width/2) - (n.position.x + n.size.width/2)) < threshold) { finalX = n.position.x + n.size.width/2 - size.width/2; snappedX = true; }
+          else if (Math.abs((finalX + size.width / 2) - (n.position.x + n.size.width / 2)) < threshold) { finalX = n.position.x + n.size.width / 2 - size.width / 2; snappedX = true; }
         }
         if (!snappedY) {
           if (Math.abs(finalY - n.position.y) < threshold) { finalY = n.position.y; snappedY = true; }
           else if (Math.abs((finalY + size.height) - (n.position.y + n.size.height)) < threshold) { finalY = n.position.y + n.size.height - size.height; snappedY = true; }
-          else if (Math.abs((finalY + size.height/2) - (n.position.y + n.size.height/2)) < threshold) { finalY = n.position.y + n.size.height/2 - size.height/2; snappedY = true; }
+          else if (Math.abs((finalY + size.height / 2) - (n.position.y + n.size.height / 2)) < threshold) { finalY = n.position.y + n.size.height / 2 - size.height / 2; snappedY = true; }
         }
         if (snappedX && snappedY) break;
       }
-      
+
       const newPos = { x: finalX, y: finalY };
-      
+
       if (newPos.x !== note.position.x || newPos.y !== note.position.y) {
         updateNote(note._id, { position: newPos });
         emitNoteMove?.(note._id, newPos);
@@ -303,9 +303,9 @@ export default function StickyNote({
         // Save children
         if (note.isFrame) {
           childNotes.forEach(child => {
-             const childNewPos = { x: newPos.x + child.startOffsetX, y: newPos.y + child.startOffsetY };
-             updateNote(child.id, { position: childNewPos });
-             emitNoteMove?.(child.id, childNewPos);
+            const childNewPos = { x: newPos.x + child.startOffsetX, y: newPos.y + child.startOffsetY };
+            updateNote(child.id, { position: childNewPos });
+            emitNoteMove?.(child.id, childNewPos);
           });
         }
       }
@@ -320,11 +320,11 @@ export default function StickyNote({
   const handleResizePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation(); e.preventDefault();
     setIsDragging(true);
-    
+
     // Get scale from DOM
     const noteEl = (e.currentTarget as HTMLElement).closest('.absolute, .relative') as HTMLElement;
     const currentScale = noteEl ? noteEl.getBoundingClientRect().width / noteEl.offsetWidth || 1 : 1;
-    
+
     const startX = e.clientX, startY = e.clientY;
     const startW = size.width, startH = size.height;
 
@@ -358,9 +358,9 @@ export default function StickyNote({
         ${currentTheme.bg} ${currentTheme.text} ${note.isFrame ? currentTheme.border : 'shadow-xl hover:shadow-2xl'}
       `}
       style={{
-        left:   isGridMode ? 'auto' : position.x,
-        top:    isGridMode ? 'auto' : position.y,
-        width:  size.width,
+        left: isGridMode ? 'auto' : position.x,
+        top: isGridMode ? 'auto' : position.y,
+        width: size.width,
         height: size.height,
         minWidth: 350,
         minHeight: 250,
@@ -413,8 +413,8 @@ export default function StickyNote({
           className={`w-full bg-transparent border-none outline-none font-bold text-lg placeholder:text-current placeholder:opacity-40 ${currentTheme.text}`}
           style={{ fontFamily: 'var(--font-kalam), cursive' }}
         />
-        
-        <div className="flex-1 overflow-hidden">
+
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <RichTextEditor
             content={note.content}
             textClass={currentTheme.text}
@@ -441,7 +441,7 @@ export default function StickyNote({
         />
       </div>
 
-          {!note.isFrame && (
+      {!note.isFrame && (
         <NoteFooter
           noteId={note._id} content={note.content} tags={note.tags} currentTheme={currentTheme}
           isAddingTag={isAddingTag} setIsAddingTag={setIsAddingTag}

@@ -45,7 +45,7 @@ export default function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: `outline-none w-full h-full min-h-[80px] ${textClass} tiptap-editor`,
+        class: `outline-none w-full min-h-[80px] pb-2 ${textClass} tiptap-editor`,
         style: `font-family: var(--font-kalam), cursive; font-size: 1.2rem; line-height: 1.6;`,
       },
     },
@@ -64,16 +64,17 @@ export default function RichTextEditor({
   if (readOnly) {
     return (
       <div
-        className={`tiptap-readonly ${textClass} tiptap-editor`}
+        className={`tiptap-readonly h-full overflow-y-auto custom-scrollbar pb-2 ${textClass} tiptap-editor`}
         style={{ fontFamily: 'var(--font-kalam), cursive', fontSize: '1.2rem', lineHeight: '1.6' }}
         dangerouslySetInnerHTML={{ __html: content }}
+        onWheel={(e) => e.stopPropagation()}
       />
     );
   }
 
   return (
-    <div className="flex flex-col h-full no-drag">
-      <EditorContent editor={editor} className="flex-1 overflow-y-auto custom-scrollbar" />
+    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar no-drag" onWheel={(e) => e.stopPropagation()}>
+      <EditorContent editor={editor} className="h-full" />
     </div>
   );
 }

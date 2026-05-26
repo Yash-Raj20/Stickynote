@@ -19,9 +19,9 @@ import { Download, FileImage } from 'lucide-react';
 import Toolbar from './Toolbar';
 
 export default function Canvas() {
-  const notes        = useNotesStore(state => state.notes);
-  const fetchNotes   = useNotesStore(state => state.fetchNotes);
-  const user         = useAuthStore(state => state.user);
+  const notes = useNotesStore(state => state.notes);
+  const fetchNotes = useNotesStore(state => state.fetchNotes);
+  const user = useAuthStore(state => state.user);
   const activeBoardId = useBoardStore(state => state.activeBoardId);
 
   // ── Derive view from URL ──────────────────────────────────────────────────
@@ -32,9 +32,9 @@ export default function Canvas() {
   else if (pathname.includes('/shared')) currentView = 'shared';
 
   // ── Canvas state ──────────────────────────────────────────────────────────
-  const canvasRef    = useRef<HTMLDivElement>(null);
-  const innerRef     = useRef<HTMLDivElement>(null);
-  const [pan, setPan]     = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const guides = useUIStore(state => state.guides);
@@ -45,9 +45,9 @@ export default function Canvas() {
 
   // ── Mind-map connection mode ──────────────────────────────────────────────
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
-  
+
   // ── Pinch to zoom state ───────────────────────────────────────────────────
-  const touchStartRef = useRef<{ dist: number, scale: number, center: {x: number, y: number} }>({ dist: 0, scale: 1, center: {x: 0, y: 0} });
+  const touchStartRef = useRef<{ dist: number, scale: number, center: { x: number, y: number } }>({ dist: 0, scale: 1, center: { x: 0, y: 0 } });
 
   const handleConnectStart = (noteId: string) => setConnectingFrom(noteId);
   const handleConnectEnd = useCallback(async (targetId: string) => {
@@ -77,6 +77,11 @@ export default function Canvas() {
     if (!canvas) return;
 
     const onWheel = (e: WheelEvent) => {
+      // Ignore wheel events if they originate from inside the text editor or a scrollable area
+      if ((e.target as HTMLElement).closest('.tiptap-editor, .custom-scrollbar, .overflow-y-auto')) {
+        return;
+      }
+
       e.preventDefault();
       if (e.ctrlKey) {
         const delta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60);
@@ -92,7 +97,7 @@ export default function Canvas() {
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-        
+
         setScale(currentScale => {
           touchStartRef.current = { dist, scale: currentScale, center: { x: 0, y: 0 } };
           return currentScale;
@@ -106,7 +111,7 @@ export default function Canvas() {
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const dist = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-        
+
         const initial = touchStartRef.current;
         if (initial.dist > 0) {
           const delta = dist / initial.dist;
@@ -119,7 +124,7 @@ export default function Canvas() {
     canvas.addEventListener('wheel', onWheel, { passive: false });
     canvas.addEventListener('touchstart', onTouchStart, { passive: false });
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    
+
     return () => {
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('touchstart', onTouchStart);
@@ -154,7 +159,7 @@ export default function Canvas() {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left - pan.x) / scale;
     const y = (e.clientY - rect.top - pan.y) / scale;
-    
+
     // Throttle emitting slightly by ignoring tiny movements if needed, but for now just emit
     emitCursorMove(x, y);
   };
@@ -168,31 +173,31 @@ export default function Canvas() {
   };
 
   // Zoom helpers
-  const handleZoomIn  = () => setScale(s => Math.min(3, Math.floor(s * 10 + 1) / 10));
+  const handleZoomIn = () => setScale(s => Math.min(3, Math.floor(s * 10 + 1) / 10));
   const handleZoomOut = () => setScale(s => Math.max(0.1, Math.ceil(s * 10 - 1) / 10));
-  const handleResetZoom  = () => { setScale(1); setPan({ x: 0, y: 0 }); };
-  const handleFitScreen  = () => {
+  const handleResetZoom = () => { setScale(1); setPan({ x: 0, y: 0 }); };
+  const handleFitScreen = () => {
     if (!notes.length) { setScale(1); setPan({ x: 0, y: 0 }); return; }
     const minX = Math.min(...notes.map(n => n.position.x));
     const minY = Math.min(...notes.map(n => n.position.y));
     const maxX = Math.max(...notes.map(n => n.position.x + (n.size?.width || 250)));
     const maxY = Math.max(...notes.map(n => n.position.y + (n.size?.height || 250)));
-    
+
     const W = canvasRef.current ? canvasRef.current.clientWidth : window.innerWidth - 240;
     const H = canvasRef.current ? canvasRef.current.clientHeight : window.innerHeight - 80;
-    
+
     const padding = 80;
     const notesWidth = maxX - minX;
     const notesHeight = maxY - minY;
-    
+
     const scaleX = (W - padding * 2) / notesWidth;
     const scaleY = (H - padding * 2) / notesHeight;
-    let s = Math.min(scaleX, scaleY, 1.5); 
+    let s = Math.min(scaleX, scaleY, 1.5);
     s = Math.max(0.1, s);
-    
+
     const panX = (W / 2) - ((minX + notesWidth / 2) * s);
     const panY = (H / 2) - ((minY + notesHeight / 2) * s);
-    
+
     setScale(Math.round(s * 100) / 100);
     setPan({ x: Math.round(panX), y: Math.round(panY) });
   };
@@ -237,8 +242,8 @@ export default function Canvas() {
                     {currentView === 'shared'
                       ? (sharedTab === 'with_me' ? 'No one has shared any notes with you yet.' : "You haven't shared any notes yet.")
                       : currentView === 'archived' ? "You haven't archived any notes."
-                      : currentView === 'trashed'  ? 'Your trash is empty.'
-                      : 'No notes here.'}
+                        : currentView === 'trashed' ? 'Your trash is empty.'
+                          : 'No notes here.'}
                   </p>
                 </div>
               </div>
@@ -287,7 +292,7 @@ export default function Canvas() {
           <RemoteCursors boardId={activeBoardId} pan={pan} scale={scale} />
           <LaserLayer boardId={activeBoardId} scale={scale} pan={pan} canvasRef={canvasRef} />
         </div>
-        
+
         {/* Smart Alignment Guides */}
         {guides.map((g, i) => (
           <div
