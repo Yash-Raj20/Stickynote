@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNotesStore } from '@/store/useNotesStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import StickyNote from './StickyNote';
 import ShareModal from './note/ShareModal';
@@ -23,6 +23,16 @@ export default function Canvas() {
   const fetchNotes = useNotesStore(state => state.fetchNotes);
   const user = useAuthStore(state => state.user);
   const activeBoardId = useBoardStore(state => state.activeBoardId);
+  const setActiveBoardId = useBoardStore(state => state.setActiveBoardId);
+  const searchParams = useSearchParams();
+
+  // ── Auto-select board from URL parameter ────────────────────────────────
+  useEffect(() => {
+    const urlBoardId = searchParams.get('boardId');
+    if (urlBoardId && urlBoardId !== activeBoardId) {
+      setActiveBoardId(urlBoardId);
+    }
+  }, [searchParams, activeBoardId, setActiveBoardId]);
 
   // ── Derive view from URL ──────────────────────────────────────────────────
   const pathname = usePathname();
