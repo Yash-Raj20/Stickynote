@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useNotesStore } from '@/store/useNotesStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useBoardStore } from '@/store/useBoardStore';
@@ -18,7 +18,7 @@ import { exportAsPng, exportAsPdf } from '@/lib/exportBoard';
 import { Download, FileImage } from 'lucide-react';
 import Toolbar from './Toolbar';
 
-export default function Canvas() {
+function CanvasContent() {
   const notes = useNotesStore(state => state.notes);
   const fetchNotes = useNotesStore(state => state.fetchNotes);
   const user = useAuthStore(state => state.user);
@@ -39,7 +39,7 @@ export default function Canvas() {
   let currentView: 'active' | 'archived' | 'trashed' | 'shared' = 'active';
   if (pathname.includes('/archived')) currentView = 'archived';
   else if (pathname.includes('/trashed')) currentView = 'trashed';
-  else if (pathname.includes('/shared')) currentView = 'shared';
+  else if (pathname.includes('/shared')) currentView = 'shared'; 
 
   // ── Canvas state ──────────────────────────────────────────────────────────
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -359,5 +359,13 @@ export default function Canvas() {
         <Toolbar />
       </div>
     </div>
+  );
+}
+
+export default function Canvas() {
+  return (
+    <Suspense fallback={<div className="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-background">Loading board...</div>}>
+      <CanvasContent />
+    </Suspense>
   );
 }
