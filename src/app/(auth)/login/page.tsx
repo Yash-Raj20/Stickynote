@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import Link from 'next/link';
@@ -9,13 +10,15 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const boardId = searchParams.get('boardId');
   const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +29,7 @@ export default function LoginPage() {
       const res = await api.post('/auth/login', { email, password });
       toast.success('Welcome back!');
       login(res.data.data, res.data.data.token);
-      router.push('/board');
+      router.push(boardId ? `/board?boardId=${boardId}` : '/board');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Login failed';
       setError(msg);
@@ -53,7 +56,7 @@ export default function LoginPage() {
         <div className="flex-1 text-center py-2 text-sm font-semibold rounded-md bg-surface text-theme-primary shadow-sm cursor-default">
           Login
         </div>
-        <Link href="/register" className="flex-1 text-center py-2 text-sm font-semibold rounded-md text-foreground/50 hover:text-foreground transition-colors">
+        <Link href={boardId ? `/register?boardId=${boardId}` : "/register"} className="flex-1 text-center py-2 text-sm font-semibold rounded-md text-foreground/50 hover:text-foreground transition-colors">
           Register
         </Link>
       </div>
@@ -105,8 +108,16 @@ export default function LoginPage() {
       </form>
 
       <p className="text-center text-sm text-foreground/50 mt-8 font-medium">
-        Don't have an account? <Link href="/register" className="text-theme-primary hover:text-theme-secondary transition-colors">Create account</Link>
+        Don't have an account? <Link href={boardId ? `/register?boardId=${boardId}` : "/register"} className="text-theme-primary hover:text-theme-secondary transition-colors">Create account</Link>
       </p>
     </motion.div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

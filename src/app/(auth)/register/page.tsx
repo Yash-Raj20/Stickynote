@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import api from '@/lib/api';
 import Link from 'next/link';
@@ -10,7 +11,7 @@ import toast from 'react-hot-toast';
 
 import { Eye, EyeOff } from 'lucide-react';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,6 +19,8 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const boardId = searchParams.get('boardId');
   const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +31,7 @@ export default function RegisterPage() {
       const res = await api.post('/auth/register', { name, email, password });
       toast.success('Account created successfully!');
       login(res.data.data, res.data.data.token);
-      router.push('/board');
+      router.push(boardId ? `/board?boardId=${boardId}` : '/board');
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Registration failed';
       setError(msg);
@@ -52,7 +55,7 @@ export default function RegisterPage() {
 
       {/* Segmented Control */}
       <div className="flex bg-input-bg p-1 rounded-lg mb-8">
-        <Link href="/login" className="flex-1 text-center py-2 text-sm font-semibold rounded-md text-foreground/50 hover:text-foreground transition-colors">
+        <Link href={boardId ? `/login?boardId=${boardId}` : "/login"} className="flex-1 text-center py-2 text-sm font-semibold rounded-md text-foreground/50 hover:text-foreground transition-colors">
           Login
         </Link>
         <div className="flex-1 text-center py-2 text-sm font-semibold rounded-md bg-surface text-theme-primary shadow-sm cursor-default">
@@ -116,8 +119,16 @@ export default function RegisterPage() {
       </form>
 
       <p className="text-center text-sm text-foreground/50 mt-8 font-medium">
-        Already have an account? <Link href="/login" className="text-theme-primary hover:text-theme-secondary transition-colors">Sign In</Link>
+        Already have an account? <Link href={boardId ? `/login?boardId=${boardId}` : "/login"} className="text-theme-primary hover:text-theme-secondary transition-colors">Sign In</Link>
       </p>
     </motion.div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <RegisterContent />
+    </Suspense>
   );
 }
