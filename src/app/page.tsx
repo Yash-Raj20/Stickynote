@@ -1,8 +1,19 @@
+"use client";
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Sparkles, Zap, Layers, Share2, Wand2, PlusCircle, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function LandingPage() {
+  const { isAuthenticated } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-50 selection:bg-[#FEC700]/30 overflow-hidden font-sans">
       {/* Background Effects */}
@@ -17,20 +28,28 @@ export default function LandingPage() {
       </div>
 
       {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-6 max-w-7xl mx-auto border-b border-slate-700/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+      <nav className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6 max-w-7xl mx-auto border-b border-slate-700/50">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
             <Image src="/logo-new.png" alt="Sticky Notes Logo" width={32} height={32} className="object-contain" />
           </div>
-          <span className="font-bold text-xl tracking-tight text-white">Sticky Notes</span>
+          <span className="font-bold text-lg sm:text-xl tracking-tight text-white whitespace-nowrap">Sticky Notes</span>
         </div>
-        <div className="flex items-center gap-6">
-          <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-[#FEC700] transition-colors">
-            Log in
-          </Link>
-          <Link href="/register" className="px-5 py-2.5 text-sm font-bold bg-[#FEC700] text-slate-900 rounded-md hover:bg-[#e5b300] transition-colors shadow-lg shadow-[#FEC700]/20">
-            Start for free
-          </Link>
+        <div className="flex items-center gap-3 sm:gap-6">
+          {mounted && isAuthenticated ? (
+            <Link href="/board" className="px-3 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-bold bg-[#FEC700] text-slate-900 rounded-md hover:bg-[#e5b300] transition-colors shadow-lg shadow-[#FEC700]/20 whitespace-nowrap">
+              Go to Board
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="text-xs sm:text-sm font-medium text-slate-300 hover:text-[#FEC700] transition-colors whitespace-nowrap">
+                Log in
+              </Link>
+              <Link href="/register" className="px-3 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-bold bg-[#FEC700] text-slate-900 rounded-md hover:bg-[#e5b300] transition-colors shadow-lg shadow-[#FEC700]/20 whitespace-nowrap">
+                Start for free
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -48,14 +67,23 @@ export default function LandingPage() {
             Brainstorm, plan, and collaborate in real-time. Powered by AI to extract tasks, color-code priorities, and mind-map automatically.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <Link href="/register" className="group flex items-center gap-2 px-8 py-4 text-base font-bold bg-[#FEC700] text-slate-900 rounded-xl hover:bg-[#e5b300] transition-all duration-200 shadow-[0_0_30px_rgba(254,199,0,0.3)] hover:shadow-[0_0_40px_rgba(254,199,0,0.4)] hover:-translate-y-0.5">
-              Start building for free
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
-            <Link href="/login" className="px-8 py-4 text-base font-medium text-white bg-[#02462E] rounded-xl hover:bg-[#02462E]/80 transition-all duration-200 shadow-lg shadow-[#02462E]/30 border border-[#02462E]/50">
-              Sign In
-            </Link>
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+            {mounted && isAuthenticated ? (
+              <Link href="/board" className="group flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 text-base font-bold bg-[#FEC700] text-slate-900 rounded-xl hover:bg-[#e5b300] transition-all duration-200 shadow-[0_0_30px_rgba(254,199,0,0.3)] hover:shadow-[0_0_40px_rgba(254,199,0,0.4)] hover:-translate-y-0.5">
+                Go to your Board
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            ) : (
+              <>
+                <Link href="/register" className="group flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 text-base font-bold bg-[#FEC700] text-slate-900 rounded-xl hover:bg-[#e5b300] transition-all duration-200 shadow-[0_0_30px_rgba(254,199,0,0.3)] hover:shadow-[0_0_40px_rgba(254,199,0,0.4)] hover:-translate-y-0.5">
+                  Start building for free
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <Link href="/login" className="w-full sm:w-auto text-center px-8 py-4 text-base font-medium text-white bg-[#02462E] rounded-xl hover:bg-[#02462E]/80 transition-all duration-200 shadow-lg shadow-[#02462E]/30 border border-[#02462E]/50">
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -203,8 +231,8 @@ export default function LandingPage() {
            <div className="relative z-10 max-w-2xl mx-auto">
              <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white tracking-tight">Ready to bring your ideas to life?</h2>
              <p className="text-slate-300 mb-10 text-lg md:text-xl">Join thousands of teams who are already building the future with our AI-powered whiteboard.</p>
-             <Link href="/register" className="inline-flex items-center gap-2 px-10 py-5 text-lg font-bold bg-[#FEC700] text-slate-900 rounded-xl hover:bg-[#e5b300] transition-all duration-300 shadow-[0_0_30px_rgba(254,199,0,0.3)] hover:shadow-[0_0_50px_rgba(254,199,0,0.5)] hover:-translate-y-1">
-                Get Started for Free
+             <Link href={mounted && isAuthenticated ? "/board" : "/register"} className="inline-flex items-center gap-2 px-10 py-5 text-lg font-bold bg-[#FEC700] text-slate-900 rounded-xl hover:bg-[#e5b300] transition-all duration-300 shadow-[0_0_30px_rgba(254,199,0,0.3)] hover:shadow-[0_0_50px_rgba(254,199,0,0.5)] hover:-translate-y-1">
+                {mounted && isAuthenticated ? "Open Your Board" : "Get Started for Free"}
                 <ArrowRight className="w-6 h-6" />
              </Link>
            </div>
@@ -221,8 +249,14 @@ export default function LandingPage() {
             <span className="font-semibold text-slate-300 text-lg">Sticky Notes</span>
           </div>
           <div className="flex items-center gap-8 text-sm text-slate-500 font-medium">
-            <Link href="/login" className="hover:text-[#FEC700] transition-colors">Log In</Link>
-            <Link href="/register" className="hover:text-[#FEC700] transition-colors">Sign Up</Link>
+            {mounted && isAuthenticated ? (
+              <Link href="/board" className="hover:text-[#FEC700] transition-colors">Dashboard</Link>
+            ) : (
+              <>
+                <Link href="/login" className="hover:text-[#FEC700] transition-colors">Log In</Link>
+                <Link href="/register" className="hover:text-[#FEC700] transition-colors">Sign Up</Link>
+              </>
+            )}
             <span>© {new Date().getFullYear()} All rights reserved.</span>
           </div>
         </div>
